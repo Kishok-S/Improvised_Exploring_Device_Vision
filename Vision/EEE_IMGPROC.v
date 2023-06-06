@@ -70,11 +70,14 @@ parameter MSG_INTERVAL = 6;
 parameter BB_COL_DEFAULT = 24'h00ff00;
 
 
-wire [7:0]   red, green, blue, grey;
+wire [7:0]   red, green, blue, grey, black;
 wire [7:0]   red_out, green_out, blue_out;
 
 wire         sop, eop, in_valid, out_ready;
 ////////////////////////////////////////////////////////////////////////
+
+
+
 
 // Detect red, blue or orange areas
 wire red_detect;
@@ -85,18 +88,23 @@ wire white_detect;
 assign red_detect = (red[7:5] == 3'b111) & ~green[7] & ~blue[7];
 assign blue_detect = ~red[7] & ~green[7] & (blue[7:6] == 2'b11);
 assign orange_detect = (red[7:5] == 3'b111) & green[7] & (green[7:0] <= 8'b11001100) & ~blue[7];
-assign White_detect = ()
+assign white_detect = (red[7:0] == 8'hff) & (green[7:0] == 8'hff) & (blue[7:0] == 8'hff);
 
 // Find boundary of cursor box
+
 
 // Highlight detected areas
 wire [23:0] red_high;
 wire [23:0] blue_high;
 wire [23:0] orange_high;
+wire [23:0] white_high;
+
 assign grey = green[7:1] + red[7:2] + blue[7:2]; //Grey = green/2 + red/4 + blue/4
-assign red_high = red_detect ? {8'hff, 8'h0, 8'h0} : {grey, grey, grey};
-assign blue_high = blue_detect ? {8'h0, 8'h0, 8'hff} : {grey, grey, grey};
-assign orange_high = orange_detect ? {8'hff, 8'hA5, 8'h0} : {grey, grey, grey};
+assign black = 8'h00;
+assign red_high = red_detect ? {8'hff, 8'h0, 8'h0} : {black, black, black};
+assign blue_high = blue_detect ? {8'h0, 8'h0, 8'hff} : {black, black, black};
+assign orange_high = orange_detect ? {8'hff, 8'hA5, 8'h0} : {black, black, black};
+assign white_high = white_detect ? {8'hff, 8'hff, 8'hff} : {black, black, black};
 
 // Show bounding box
 wire [23:0] new_image;
@@ -104,7 +112,7 @@ wire bb_active_red, bb_active_blue,bb_active_orange;
 assign bb_active_red = (x == left) | (x == right) | (y == top) | (y == bottom);
 assign bb_active_blue = (x == left) | (x == right) | (y == top) | (y == bottom);
 assign bb_active_orange = (x == left) | (x == right) | (y == top) | (y == bottom);
-assign new_image = bb_active_red ? bb_col : (bb_active_blue ? bb_col : (bb_active_orange ? bb_col : (red_high | blue_high | orange_high)));
+assign new_image = bb_active_red ? bb_col : (bb_active_blue ? bb_col : (bb_active_orange ? bb_col : (red_high | blue_high | orange_high| white_high)));
 
 // Switch output pixels depending on mode switch
 // Don't modify the start-of-packet word - it's a packet discriptor
